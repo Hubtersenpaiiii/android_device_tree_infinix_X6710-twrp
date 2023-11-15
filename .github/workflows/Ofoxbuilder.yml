@@ -22,7 +22,7 @@ on:
       DEVICE_TREE:
         description: 'Custom Recovery Tree'
         required: true
-        default: 'https://github.com/Hubtersenpaiiii/android_device_tree_infinix_X6710'
+        default: 'https://github.com/Hubtersenpaiiii/android_device_tree_infinix_X6710-twrp.git'
       DEVICE_TREE_BRANCH:
         description: 'Custom Recovery Tree Branch'
         required: true
