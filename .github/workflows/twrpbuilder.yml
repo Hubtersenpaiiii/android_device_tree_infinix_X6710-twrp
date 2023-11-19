@@ -1,30 +1,39 @@
-name: Build TWRP
+name: TWRP
 
 on:
-  workflow_dispatch:
   push:
+    branches:
+      - 'twrp-12.1'
 
-env:
-  BRANCH_NAME: ${{ github.head_ref || github.ref_name }} 
+    paths:
+      - 'version.mk'
 
 jobs:
   build:
-    # if: github.event.repository.owner.id == github.event.sender.id
+    name: Build TWRP by ${{ github.actor }}
     runs-on: ubuntu-20.04
-    # You might want to Checkout your repo first, but not mandatory
+    if: github.event.repository.owner.id == github.event.sender.id
+    permissions:
+      contents: write
     steps:
     - name: Check Out
       uses: actions/checkout@v3
-    # Cleanup The Actions Workspace Using Custom Composite Run Actions
+
     - name: Cleanup
       uses: rokibhasansagar/slimhub_actions@main
-      # That's it! Now use your normal steps
-    
+
+    - name: Set Swap Space
+      uses: pierotofy/set-swap-space@master
+      with:
+        swap-size-gb: 12
+
     - name: Prepare the environment
       run: |
         sudo apt update
         sudo apt -y upgrade
-        sudo apt -y install gperf gcc-multilib gcc-10-multilib g++-multilib g++-10-multilib libc6-dev lib32ncurses5-dev x11proto-core-dev libx11-dev tree lib32z-dev libgl1-mesa-dev libxml2-utils xsltproc bc ccache lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libsdl1.2-dev libwxgtk3.0-gtk3-dev libxml2 lzop pngcrush schedtool squashfs-tools imagemagick libbz2-dev lzma ncftp qemu-user-static libstdc++-10-dev python
+        sudo apt -y install gperf gcc-multilib gcc-10-multilib g++-multilib g++-10-multilib libc6-dev lib32ncurses5-dev x11proto-core-dev libx11-dev tree lib32z-dev libgl1-mesa-dev libxml2-utils xsltproc bc ccache lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libsdl1.2-dev libwxgtk3.0-gtk3-dev libxml2 lzop pngcrush schedtool squashfs-tools imagemagick libbz2-dev lzma ncftp qemu-user-static libstdc++-10-dev libtinfo5 libgflags-dev
+        sudo add-apt-repository universe
+        sudo apt -y install libncurses5
 
     - name: Install OpenJDK
       uses: actions/setup-java@v3
@@ -32,54 +41,67 @@ jobs:
         distribution: 'zulu'
         java-version: '8'
 
-    - name: Install repo
+    - name: Install Git-Repo
       run: |
         mkdir ~/bin
         curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
         chmod a+x ~/bin/repo
         sudo ln -sf ~/bin/repo /usr/bin/repo
-      
-    - name: Initialize repo
+
+    - name: Initialize Repo
       run: |
-        mkdir workspace
-        cd workspace
-        echo "workspace-folder=$(pwd)" >> $GITHUB_OUTPUT
-        git config --global user.name "jhonpaul"
-        git config --global user.email "eriojhonpaul7@gmail.com"
+        mkdir twrp
+        cd twrp
+        git config --global user.name "Carlo Dee"
+        git config --global user.email "carlodee.official@proton.me"
         repo init --depth=1 -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-12.1
-      id: pwd
-          
-    - name: Repo Sync
-      run: |
         repo sync -j$(nproc --all) --force-sync
-      working-directory: workspace
-      
-    - name: Clone device tree
-      run: |
-        git clone https://github.com/Shivelight/recovery_device_infinix_X6833B.git -b ${{ env.BRANCH_NAME }} ./device/infinix/X6833B
-      working-directory: ${{ steps.pwd.outputs.workspace-folder }}
 
-    - name: Sync Device Dependencies
+    - name: Clone Device Tree
       run: |
-        bash ${GITHUB_WORKSPACE}/scripts/convert.sh device/infinix/X6833B/twrp.dependencies
-        repo sync -j$(nproc --all)
-      working-directory: ${{ steps.pwd.outputs.workspace-folder }}
-      continue-on-error: true
+        cd twrp
+        git clone https://github.com/cd-Crypton/custom_recovery_tree_infinix_X6710.git -b twrp-12.1 ./device/infinix/X6710
+        cd device/infinix/X6710
+        echo "COMMIT_ID=$(git rev-parse HEAD)" >> $GITHUB_ENV
 
-    - name: Set Swap Space
-      uses: pierotofy/set-swap-space@master
-      with:
-        swap-size-gb: 12
-
-    - name: Building recovery
+    - name: Building Image
       run: |
+        cd twrp
         source build/envsetup.sh
         export ALLOW_MISSING_DEPENDENCIES=true
-        lunch twrp_X6833B-eng && make clean && make vendorbootimage -j$(nproc --all)
-      working-directory: ${{ steps.pwd.outputs.workspace-folder }}
+        lunch twrp_X6710-eng && make clean && make bootimage -j$(nproc --all)
+        cd out/target/product/X6710
+        mv boot.img twrp-boot-${{ github.run_id }}.img
+        echo "Done building your twrp-boot-${{ github.run_id }}.img"
 
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v3
+    - name: Set Properties
+      run: |
+        echo "BUILD_DATE=$(date +%Y%m%d)" >> $GITHUB_ENV
+        echo -e \
+        "
+        ## Unofficial Build for Infinix Note 30 VIP (X6710)
+        _Note: Flash at your own risk. This build were still in the process of testing._
+        ### Resources
+        * [TWRP Manifest](https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp/tree/twrp-12.1)
+        * [Device Tree](https://github.com/cd-Crypton/custom_recovery_tree_infinix_X6710/tree/twrp-12.1)
+        ### Notes
+        * Successful installation of .zip and .img files
+        * Decryption support (A13)
+        * SD Card & USB-OTG
+        * Terminal Console works fine
+        * ADB/Sideload/MTP/FastbootD 
+        ### Trigger Event
+        _This build were compiled by triggering branch twrp-12.1 of current tree, triggered by a push event in [version makefile](https://github.com/cd-Crypton/custom_recovery_tree_infinix_X6710/blob/twrp-12.1/version.mk)._
+        * [Last Commit](https://github.com/cd-Crypton/custom_recovery_tree_infinix_X6710/commit/${{ env.COMMIT_ID }})
+        " > changelog.txt
+
+    - name: Upload to Release
+      uses: softprops/action-gh-release@v1
       with:
-        name: twrp_X6710
-        path: workspace/out/target/product/X6710/boot.img
+        files: |
+          twrp/out/target/product/X6710/twrp-boot-${{ github.run_id }}.img
+        name: TWRP Release Build for Infinix Note 30 VIP (X6710) // ${{ env.BUILD_DATE }}
+        tag_name: ${{ github.run_id }}
+        body_path: changelog.txt
+
+   
