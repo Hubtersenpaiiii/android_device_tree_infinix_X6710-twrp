@@ -103,5 +103,3 @@ jobs:
         name: TWRP Release Build for Infinix Note 30 VIP (X6710) // ${{ env.BUILD_DATE }}
         tag_name: ${{ github.run_id }}
         body_path: changelog.txt
-
-   
