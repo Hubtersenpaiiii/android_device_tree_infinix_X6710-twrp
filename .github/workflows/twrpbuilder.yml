@@ -54,7 +54,7 @@ jobs:
         cd twrp
         git config --global user.name "Carlo Dee"
         git config --global user.email "carlodee.official@proton.me"
-        repo init --depth=1 -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-12.1
+        repo init --depth=1 -u repo init -u https://github.com/SHRP/manifest.git -b shrp-12.1
         repo sync -j$(nproc --all) --force-sync
 
     - name: Clone Device Tree
@@ -72,7 +72,7 @@ jobs:
         lunch twrp_X6710-eng && make clean && make bootimage -j$(nproc --all)
         cd out/target/product/X6710
         mv boot.img twrp-boot-${{ github.run_id }}.img
-        echo "Done building your twrp-boot-${{ github.run_id }}.img"
+        echo "Done building your shrp-boot-${{ github.run_id }}.img"
 
     - name: Set Properties
       run: |
@@ -82,7 +82,7 @@ jobs:
         ## Unofficial Build for Infinix Note 30 VIP (X6710)
         _Note: Flash at your own risk. This build were still in the process of testing._
         ### Resources
-        * [TWRP Manifest](https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp/tree/twrp-12.1)
+        * [TWRP Manifest](repo init -u https://github.com/SHRP/manifest.git -b v3_11.0)
         * [Device Tree](https://github.com/cd-Crypton/custom_recovery_tree_infinix_X6710/tree/twrp-12.1)
         ### Notes
         * Successful installation of .zip and .img files
